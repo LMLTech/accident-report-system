@@ -6,6 +6,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const reportsTableBody = document.getElementById('reportsTable');
     const allReportsTableBody = document.getElementById('allReportsTable');
 
+    let lineChartInstance = null;
+    let pieChartInstance = null;
+    let mapInstance = null;
+    let markers = [];
+
     // Chuyển đổi giữa các sections
     function switchSection(targetSectionId) {
         sections.forEach(section => {
@@ -18,9 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Xử lý logic đặc biệt cho từng section
         if (targetSectionId === 'map-section') {
-            initMap('full-map');
+            fetchAndInitMap('full-map');
         } else if (targetSectionId === 'reports-section') {
             fetchAndRenderReports();
+        } else if (targetSectionId === 'stats-section') {
+            fetchAndRenderStats();
         }
     }
 
@@ -48,6 +55,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Thêm sự kiện cho nút "Xem tất cả"
+    const viewAllReportsBtn = document.getElementById('view-all-reports');
+    if (viewAllReportsBtn) {
+        viewAllReportsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const reportsButton = document.querySelector('.menu button[data-section="reports"]');
+            if (reportsButton) {
+                reportsButton.click();
+            }
+        });
+    }
+
     // Hàm render status badge
     function renderStatusBadge(status) {
         let badgeClass = 'bg-gray-100 text-gray-800';
@@ -73,7 +92,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${r.timestamp}</td>
                     <td>${r.description}</td>
                     <td>${r.location}</td>
-                    <td>${renderStatusBadge(r.status)}</td>
+                    <td>
+                        <select class="status-select" data-report-id="${r.id}">
+                            <option value="Đang xử lý" ${r.status === 'Đang xử lý' ? 'selected' : ''}>Đang xử lý</option>
+                            <option value="Đã xử lý" ${r.status === 'Đã xử lý' ? 'selected' : ''}>Đã xử lý</option>
+                            <option value="Chưa xác định" ${r.status === 'Chưa xác định' ? 'selected' : ''}>Chưa xác định</option>
+                        </select>
+                    </td>
                     <td>
                         <a href="/admin/report/${r.id}" class="viewBtn" style="background:transparent;border:0;color:var(--purple-500);cursor:pointer">
                             Chi tiết
@@ -85,6 +110,36 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Lỗi khi lấy dữ liệu báo cáo:', error);
         }
+    }
+    
+    // Hàm xử lý cập nhật trạng thái báo cáo
+    function handleUpdateStatus(reportId, newStatus) {
+        const data = {
+            status: newStatus
+        };
+
+        fetch(`/admin/report/${reportId}/update`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Cập nhật thất bại');
+            }
+            return response.json();
+        })
+        .then(result => {
+            alert('Cập nhật trạng thái thành công!');
+            fetchAndRenderReports(); // Tải lại bảng sau khi cập nhật
+            fetchAndRenderDashboardStats(); // Tải lại dashboard để cập nhật số liệu
+        })
+        .catch(error => {
+            console.error('Lỗi:', error);
+            alert('Có lỗi xảy ra khi cập nhật trạng thái.');
+        });
     }
 
     // Hàm lấy và hiển thị dữ liệu tổng quan
@@ -99,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('statSeverity').textContent = data.avgSeverity + ' / 5';
             document.getElementById('todayCount').textContent = data.totalToday;
             document.getElementById('statTime').textContent = data.lastUpdated;
-            
+
             // Render 5 báo cáo mới nhất
             const recentReports = data.recentReports;
             if (reportsTableBody) {
@@ -111,7 +166,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td>${r.timestamp}</td>
                         <td>${r.description}</td>
                         <td>${r.location}</td>
-                        <td>${renderStatusBadge(r.status)}</td>
+                        <td>
+                            <select class="status-select" data-report-id="${r.id}">
+                                <option value="Đang xử lý" ${r.status === 'Đang xử lý' ? 'selected' : ''}>Đang xử lý</option>
+                                <option value="Đã xử lý" ${r.status === 'Đã xử lý' ? 'selected' : ''}>Đã xử lý</option>
+                                <option value="Chưa xác định" ${r.status === 'Chưa xác định' ? 'selected' : ''}>Chưa xác định</option>
+                            </select>
+                        </td>
                         <td>
                             <a href="/admin/report/${r.id}" class="viewBtn" style="background:transparent;border:0;color:var(--purple-500);cursor:pointer">
                                 Chi tiết
@@ -121,75 +182,86 @@ document.addEventListener('DOMContentLoaded', () => {
                     reportsTableBody.appendChild(tr);
                 });
             }
-            
+
             // Vẽ biểu đồ
             initLineChart(data.hourlyActivity);
-            initPieChart(data.statusRatio);
+            initPieChart(data.statusCounts);
             
-            // Thêm marker vào bản đồ tổng quan
-            initMap('map', data.mapReports);
-            
+            // Khởi tạo bản đồ preview
+            initMap('map-preview', recentReports);
+
         } catch (error) {
-            console.error('Lỗi khi lấy dữ liệu Dashboard:', error);
+            console.error('Lỗi khi lấy dữ liệu dashboard:', error);
         }
     }
-    
+
+    // Lấy và hiển thị dữ liệu thống kê
+    async function fetchAndRenderStats() {
+        try {
+            const response = await fetch('/api/admin/stats');
+            const data = await response.json();
+            console.log(data);
+
+        } catch (error) {
+            console.error('Lỗi khi lấy dữ liệu thống kê:', error);
+        }
+    }
+
     // Khởi tạo biểu đồ Line (hoạt động theo giờ)
-    let lineChartInstance;
     function initLineChart(data) {
         if (lineChartInstance) {
             lineChartInstance.destroy();
         }
-        const ctx = document.getElementById('lineChart').getContext('2d');
-        const labels = data.map(d => d.hour);
-        const reportCounts = data.map(d => d.count);
+        const ctx = document.getElementById('lineChart');
+        if (!ctx) return;
         
         lineChartInstance = new Chart(ctx, {
-            type: 'line',
+            type:'line',
             data: {
-                labels,
+                labels: data.labels,
                 datasets: [{
-                    label: 'Số vụ',
-                    tension: 0.3,
-                    borderColor: '#06b6d4',
-                    backgroundColor: 'rgba(6,182,212,0.18)',
-                    fill: true,
-                    data: reportCounts
+                    label:'Số vụ',
+                    tension:0.3,
+                    borderColor:'#06b6d4',
+                    backgroundColor:'rgba(6,182,212,0.18)',
+                    fill:true,
+                    data: data.data
                 }]
             },
-            options: {
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } }
+            options:{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins:{legend:{display:false}},
+                scales:{y:{beginAtZero:true}}
             }
         });
     }
 
     // Khởi tạo biểu đồ Pie
-    let pieChartInstance;
     function initPieChart(data) {
         if (pieChartInstance) {
             pieChartInstance.destroy();
         }
-        const ctx = document.getElementById('pieChart').getContext('2d');
-        const labels = Object.keys(data);
-        const values = Object.values(data);
-        const colors = ['#ef4444', '#10b981', '#f59e0b']; // Đang xử lý, Đã xử lý, Chờ
+        const ctx = document.getElementById('pieChart');
+        if (!ctx) return;
         
         pieChartInstance = new Chart(ctx, {
-            type: 'doughnut',
+            type:'doughnut',
             data: {
-                labels,
-                datasets: [{
-                    data: values,
-                    backgroundColor: colors
+                labels: data.labels,
+                datasets:[{
+                    data: data.data,
+                    backgroundColor:['#ef4444','#10b981','#f59e0b', '#3b82f6']
                 }]
             },
-            options: { plugins: { legend: { position: 'bottom' } } }
+            options:{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins:{legend:{position:'bottom'}}
+            }
         });
     }
 
-    let mapInstance;
-    let markers = [];
     // Khởi tạo bản đồ (Leaflet)
     function initMap(mapId, reports = []) {
         if (mapInstance) {
@@ -219,16 +291,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Lắng nghe sự kiện thay đổi trên các dropdown trạng thái
+    document.addEventListener('change', (event) => {
+        if (event.target.classList.contains('status-select')) {
+            const selectElement = event.target;
+            const reportId = selectElement.getAttribute('data-report-id');
+            const newStatus = selectElement.value;
+            
+            if (confirm(`Bạn có chắc chắn muốn cập nhật trạng thái của báo cáo #${reportId} thành "${newStatus}"?`)) {
+                handleUpdateStatus(reportId, newStatus);
+            } else {
+                // Nếu người dùng hủy, reset dropdown về trạng thái ban đầu
+                // Bằng cách tải lại bảng để đảm bảo đồng bộ
+                fetchAndRenderReports(); 
+                fetchAndRenderDashboardStats();
+            }
+        }
+    });
+
     // Khởi động
     fetchAndRenderDashboardStats();
     
-    // Gợi ý: Thay thế nút "Xem tất cả" bằng button có data-section
-    const viewAllButton = document.querySelector('.card button');
-    if (viewAllButton) {
-        viewAllButton.addEventListener('click', () => {
-            switchSection('reports-section');
-            sidebarButtons.forEach(btn => btn.classList.remove('active'));
-            document.querySelector('[data-section="reports"]').classList.add('active');
-        });
-    }
 });

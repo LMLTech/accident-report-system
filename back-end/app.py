@@ -3,20 +3,22 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from werkzeug.utils import secure_filename
 from flask_cors import CORS
 import os
-import functools
-from utils.email_sender import send_emergency_email
-from database.models import db, AccidentReport, User
+import functools 
+from utils.email_sender import send_emergency_email # Đã bỏ comment
+from database.models import db, AccidentReport, User 
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date, timedelta
 from collections import defaultdict
+import json
+import pytz 
 
 # Load biến môi trường từ .env
 load_dotenv()
 
 # Cấu hình ứng dụng Flask
 app = Flask(__name__,
-            template_folder="../fornt-end/templates",
+            template_folder="../fornt-end/templates", 
             static_folder="../fornt-end/static")
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -28,6 +30,14 @@ app.config['UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'static', 'uploads')
 
 db.init_app(app)
 CORS(app)
+
+# Hàm chuyển đổi thời gian từ UTC sang múi giờ địa phương (Việt Nam)
+def convert_to_vietnam_time(utc_dt):
+    if utc_dt:
+        vietnam_timezone = pytz.timezone('Asia/Ho_Chi_Minh')
+        utc_dt = pytz.utc.localize(utc_dt)
+        return utc_dt.astimezone(vietnam_timezone)
+    return None
 
 # Hàm kiểm tra đăng nhập
 def login_required(f):
@@ -61,12 +71,16 @@ def submit_report():
         # Mức độ tai nạn được gửi từ form
         severity = request.form.get('severity', 'Va chạm') 
 
-        image = request.files['image']
-        image_filename = secure_filename(image.filename)
-        image_path = os.path.join(app.config['UPLOAD_FOLDER'], image_filename)
-        if not os.path.exists(app.config['UPLOAD_FOLDER']):
-            os.makedirs(app.config['UPLOAD_FOLDER'])
-        image.save(image_path)
+        image = request.files.get('image')
+        image_filename = None
+        image_path = None # Khởi tạo biến image_path
+
+        if image and image.filename != '':
+            image_filename = secure_filename(image.filename)
+            image_path = os.path.join(app.config['UPLOAD_FOLDER'], image_filename)
+            if not os.path.exists(app.config['UPLOAD_FOLDER']):
+                os.makedirs(app.config['UPLOAD_FOLDER'])
+            image.save(image_path)
 
         report = AccidentReport(
             name=name,
@@ -74,12 +88,17 @@ def submit_report():
             phone=phone,
             location=location,
             description=description,
-            image_filename=image_filename
+            image_filename=image_filename,
+            severity=severity
         )
         db.session.add(report)
         db.session.commit()
 
+        # Gọi hàm gửi email, truyền image_path vào.
+        # Hàm này đã được sửa lỗi để xử lý trường hợp image_path là None
         send_emergency_email(name, location, description, image_path)
+        
+        # Trả về trang success.html như ban đầu
         return render_template("success.html")
 
     except Exception as e:
@@ -117,16 +136,7 @@ def admin_login():
 def admin_dashboard():
     return render_template('dashboard.html')
 
-@app.route('/admin/stats')
-@login_required
-def stats_page():
-    return render_template('stats.html')
-
-@app.route('/admin/reports')
-@login_required
-def reports_page():
-    return render_template('reports.html')
-
+# Trang chi tiết báo cáo
 @app.route('/admin/report/<int:report_id>')
 @login_required
 def view_report(report_id):
@@ -137,15 +147,15 @@ def view_report(report_id):
 @login_required
 def update_report_status(report_id):
     report = AccidentReport.query.get_or_404(report_id)
-    new_status = request.form.get('status')
+    data = request.json
+    new_status = data.get('status')
+    
     if new_status:
         report.status = new_status
         db.session.commit()
-        flash('Cập nhật trạng thái thành công!', 'success')
-        return jsonify(success=True)
+        return jsonify(success=True, message="Cập nhật trạng thái thành công!")
     else:
-        flash('Cập nhật trạng thái thất bại!', 'error')
-        return jsonify(success=False), 400
+        return jsonify(success=False, message="Cập nhật trạng thái thất bại!"), 400
 
 @app.route('/admin/logout')
 @login_required
@@ -156,103 +166,107 @@ def admin_logout():
     return redirect(url_for('admin_login'))
 
 # ==== API ENDPOINTS CHO DASHBOARD (ĐỂ LẤY DỮ LIỆU BẰNG AJAX) ====
+
 @app.route('/api/admin/dashboard-stats')
 @login_required
 def dashboard_stats_api():
     today = date.today()
-    reports_today = AccidentReport.query.filter(AccidentReport.timestamp >= today).all()
-    
-    total_today = len(reports_today)
-    processing_count = len([r for r in reports_today if r.status == 'Đang xử lý'])
-    done_count = len([r for r in reports_today if r.status == 'Đã xử lý'])
-    
-    # Giả định một mức độ trung bình (ví dụ: tất cả đều là 3/5)
-    avg_severity = "N/A"
-    
-    # Dữ liệu cho biểu đồ hoạt động theo giờ
-    hourly_activity = {h: 0 for h in range(24)}
-    for report in reports_today:
-        hour = report.timestamp.hour
-        hourly_activity[hour] += 1
-    
-    hourly_data = [{'hour': f'{h:02d}:00', 'count': count} for h, count in hourly_activity.items()]
+    all_reports = AccidentReport.query.all()
 
-    # Dữ liệu cho biểu đồ tỉ lệ trạng thái
-    status_ratio = {
-        'Đang xử lý': processing_count,
-        'Đã xử lý': done_count,
-        'Chờ': total_today - processing_count - done_count
-    }
+    # Lọc báo cáo của ngày hôm nay theo múi giờ địa phương
+    today_reports = [r for r in all_reports if convert_to_vietnam_time(r.timestamp).date() == today]
+    
+    total_today = len(today_reports)
+    processing_count = len([r for r in today_reports if r.status == 'Đang xử lý'])
+    done_count = len([r for r in today_reports if r.status == 'Đã xử lý'])
+    
+    # Tính mức độ trung bình (ví dụ: gán giá trị số cho mức độ)
+    severity_map = {'Nhẹ': 1, 'Trung bình': 3, 'Nghiêm trọng': 5}
+    total_severity = sum(severity_map.get(r.severity, 0) for r in all_reports)
+    avg_severity = round(total_severity / len(all_reports), 2) if all_reports else 0
+    
+    # Thống kê hoạt động theo giờ
+    hourly_activity = defaultdict(int)
+    for i in range(24):
+        hourly_activity[i] = 0
+    
+    for r in all_reports:
+        # Lấy giờ theo múi giờ địa phương
+        hour = convert_to_vietnam_time(r.timestamp).hour
+        hourly_activity[hour] += 1
     
     # Lấy 5 báo cáo mới nhất
     recent_reports = AccidentReport.query.order_by(AccidentReport.timestamp.desc()).limit(5).all()
-    
-    # Tạo dữ liệu map
-    map_reports = [{
-        'id': r.id,
-        'location': r.location,
-        'status': r.status,
-        'lat': 10.77 + (r.id * 0.005) % 0.05,  # Dữ liệu lat/lng giả định
-        'lng': 106.70 + (r.id * 0.005) % 0.05
-    } for r in recent_reports]
+    recent_reports_data = [
+        {
+            'id': r.id,
+            'timestamp': convert_to_vietnam_time(r.timestamp).strftime('%H:%M %d-%m-%Y'), # Chuyển đổi ở đây
+            'location': r.location,
+            'description': r.description,
+            'status': r.status
+        } for r in recent_reports
+    ]
 
+    # Thống kê theo trạng thái cho biểu đồ tròn
+    status_counts = defaultdict(int)
+    for r in all_reports:
+        status_counts[r.status] += 1
+    
     return jsonify({
         'totalToday': total_today,
         'processing': processing_count,
         'done': done_count,
         'avgSeverity': avg_severity,
         'lastUpdated': datetime.now().strftime('%H:%M'),
-        'hourlyActivity': hourly_data,
-        'statusRatio': status_ratio,
-        'recentReports': [{
-            'id': r.id,
-            'timestamp': r.timestamp.strftime('%H:%M %d-%m-%Y'),
-            'description': r.description,
-            'location': r.location,
-            'status': r.status
-        } for r in recent_reports],
-        'mapReports': map_reports
+        'hourlyActivity': {
+            'labels': [f'{h:02d}:00' for h in range(24)],
+            'data': [hourly_activity[h] for h in range(24)]
+        },
+        'statusCounts': {
+            'labels': list(status_counts.keys()),
+            'data': list(status_counts.values())
+        },
+        'recentReports': recent_reports_data
     })
 
 @app.route('/api/admin/reports')
 @login_required
-def reports_api():
+def get_all_reports_api():
     reports = AccidentReport.query.order_by(AccidentReport.timestamp.desc()).all()
-    reports_data = [{
-        'id': r.id,
-        'timestamp': r.timestamp.strftime('%H:%M %d-%m-%Y'),
-        'description': r.description,
-        'location': r.location,
-        'status': r.status
-    } for r in reports]
+    reports_data = [
+        {
+            'id': r.id,
+            'timestamp': convert_to_vietnam_time(r.timestamp).strftime('%H:%M %d-%m-%Y'), # Chuyển đổi ở đây
+            'location': r.location,
+            'description': r.description,
+            'status': r.status
+        } for r in reports
+    ]
     return jsonify(reports_data)
 
-@app.route('/api/admin/detailed-stats')
+@app.route('/api/admin/stats')
 @login_required
-def detailed_stats_api():
+def stats_api():
     all_reports = AccidentReport.query.all()
-
+    
     # Thống kê theo khu vực
-    stats_by_region = defaultdict(lambda: defaultdict(int))
+    stats_by_region = defaultdict(int)
     for report in all_reports:
-        # Giả định địa điểm có dạng "Quận X, TPHCM" hoặc "TP Y, Tỉnh Z"
-        location_parts = report.location.split(', ')
-        if len(location_parts) >= 2:
-            sub_region = location_parts[0]  # Ví dụ: "Quận 1", "TP Thủ Đức"
-            main_region = location_parts[1] # Ví dụ: "TPHCM", "Tiền Giang"
-            stats_by_region[main_region][sub_region] += 1
+        stats_by_region[report.location] += 1
     
     # Thống kê theo ngày trong tuần (7 ngày gần nhất)
+    today = date.today()
     reports_by_day = defaultdict(int)
-    today = datetime.now().date()
     seven_days_ago = today - timedelta(days=6)
     
     date_range = [seven_days_ago + timedelta(days=i) for i in range(7)]
-    day_labels = [d.strftime('%A') for d in date_range] # Tên ngày trong tuần
+    day_labels = [d.strftime('%a') for d in date_range] # Tên ngày trong tuần (ví dụ: Mon, Tue)
     
     reports_in_range = AccidentReport.query.filter(AccidentReport.timestamp >= seven_days_ago).all()
     for report in reports_in_range:
-        day_of_week = report.timestamp.strftime('%A')
+        # Chuyển đổi thời gian của báo cáo sang múi giờ địa phương trước khi lấy ngày
+        vietnam_time = convert_to_vietnam_time(report.timestamp)
+        day_of_week = vietnam_time.strftime('%a')
         reports_by_day[day_of_week] += 1
         
     reports_by_day_data = [reports_by_day.get(d, 0) for d in day_labels]
@@ -278,14 +292,21 @@ if __name__ == '__main__':
     if not os.path.exists(instance_path):
         os.makedirs(instance_path)
     
-    with app.app_context():
-        print("🔨 Đang tạo bảng trong CSDL nếu chưa có...")
-        db.create_all()
+    # Tạo thư mục uploads nếu chưa tồn tại
+    if not os.path.exists(app.config['UPLOAD_FOLDER']):
+        os.makedirs(app.config['UPLOAD_FOLDER'])
 
+    with app.app_context():
+        print("🔨 Đang tạo cơ sở dữ liệu...")
+        db.create_all()
+        # Tạo người dùng admin mặc định nếu chưa tồn tại
         if not User.query.filter_by(username='admin').first():
-            hashed_password = generate_password_hash('123456', method='pbkdf2:sha256') 
+            hashed_password = generate_password_hash('admin123')
             admin_user = User(username='admin', password=hashed_password)
             db.session.add(admin_user)
             db.session.commit()
-
-    app.run(debug=True)
+          
+        
+        print("Khởi động server...")
+    
+    app.run(debug=True, port=8000)

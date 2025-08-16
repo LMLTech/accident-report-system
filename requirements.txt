@@ -7,3 +7,4 @@ geopy                # để xử lý tọa độ địa lý
 requests             # để gọi API nếu dùng Google Maps, Nominatim
 email-validator      # kiểm tra email nếu cần
 smtplib              # sẵn trong Python, không cần cài
+tzlocal              # để xử lý múi giờ

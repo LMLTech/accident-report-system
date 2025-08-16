@@ -76,16 +76,5 @@ tbody tr{border-bottom:1px solid #f1f5f9}
     .sidebar .brand, .sidebar .bottom { display: none; }
     .menu button span { display: none; }
     .menu button { justify-content: center; }
-    main.main{padding: 24px 12px; margin-left: 70px; }
-}
-
-
-@media(max-width:768px){
-    .app { flex-direction: column; }
-    aside.sidebar { width: 100%; height: auto; flex-direction: row; box-shadow: none; position: fixed; bottom: 0; }
-    .sidebar .brand, .sidebar .bottom { display: none; }
-    .menu { flex-direction: row; padding: 0; justify-content: space-around; width: 100%; }
-    .menu button { flex-direction: column; gap: 4px; padding: 10px 0; }
-    main.main { padding: 12px; margin-bottom: 70px; }
-    .stats.grid-4{grid-template-columns:1fr}
+    main.main { margin-left: 70px; }
 }

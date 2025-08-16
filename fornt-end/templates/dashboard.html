@@ -4,19 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Admin Dashboard - Giám sát tai nạn</title>
-    <!-- Liên kết tới CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-    <!-- Font Awesome để dùng icon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Chart.js (CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Leaflet (CDN) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
     <div class="app">
-        <!-- SIDEBAR -->
         <aside class="sidebar">
             <div class="brand">ADMIN QUẢN LÝ</div>
             <nav class="menu" aria-label="Main">
@@ -32,9 +27,7 @@
             </div>
         </aside>
 
-        <!-- MAIN CONTENT -->
         <main class="main">
-            <!-- Header -->
             <header class="topbar">
                 <div>
                     <div class="title">Bảng điều khiển - Giám sát tai nạn giao thông</div>
@@ -49,10 +42,7 @@
                 </div>
             </header>
 
-            <!-- SECTIONS -->
-            <!-- Dashboard Section -->
-            <section class="content-section" id="dashboard-section">
-                <!-- Stats -->
+            <section class="content-section active" id="dashboard-section">
                 <section class="grid stats grid-4" aria-label="Statistics">
                     <div class="card">
                         <h4>Tổng vụ hôm nay</h4>
@@ -74,35 +64,28 @@
                         <div class="value" id="statSeverity">0 / 5</div>
                     </div>
                 </section>
-                <!-- Columns: charts + map -->
+
                 <div class="columns">
                     <div>
                         <div class="card" style="margin-bottom:14px">
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                                <h3 style="margin:0">Tổng Quan ( Thống Kê )</h3>
-                                <small style="color:var(--muted)">Cập nhật ngày tháng năm</small>
-                            </div>
+                            <h3 style="margin:0 0 10px 0">Hoạt động theo giờ</h3>
                             <div style="height:300px;">
-                                <canvas id="lineChart" style="width:100%;height:100%"></canvas>
+                                <canvas id="lineChart"></canvas>
                             </div>
                         </div>
 
                         <div class="card">
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                                <h3 style="margin:0">Phân loại theo mức độ va chạm</h3>
-                            </div>
+                            <h3 style="margin:0 0 10px 0">Tỉ lệ trạng thái</h3>
                             <div style="height:260px;display:flex;align-items:center;justify-content:center">
                                 <canvas id="pieChart" width="300" height="300"></canvas>
                             </div>
                         </div>
                     </div>
-
                     <aside>
                         <div class="card" style="margin-bottom:14px">
                             <h3 style="margin:0 0 8px 0">Bản đồ tai nạn (preview)</h3>
-                            <div id="map" class="map-box"></div>
+                            <div id="map-preview" class="map-box"></div>
                         </div>
-
                         <div class="card">
                             <h3 style="margin:0 0 8px 0">Hành động nhanh</h3>
                             <div style="display:flex;flex-direction:column;gap:8px">
@@ -113,57 +96,65 @@
                         </div>
                     </aside>
                 </div>
+
+                <section style="margin-top:18px">
+                    <div class="card">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                            <h3 style="margin:0">Báo cáo mới nhất</h3>
+                            <button id="view-all-reports" style="border:0;background:transparent;color:var(--purple-500);cursor:pointer">Xem tất cả</button>
+                        </div>
+                        <div style="overflow:auto">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Mã</th><th>Thời gian</th><th>Loại</th><th>Khu vực</th><th>Trạng thái</th><th>Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reportsTable">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
             </section>
-            
-            <!-- Reports List Section -->
-            <section class="content-section hidden" id="reports-section">
+
+            <section class="content-section" id="map-section">
                 <div class="card">
-                    <h3 style="margin:0 0 12px 0">Danh sách tất cả báo cáo</h3>
+                    <h3 style="margin:0">Bản đồ Tai nạn</h3>
+                    <div id="full-map" class="map-box mt-4" style="height: 600px;"></div>
+                </div>
+            </section>
+
+            <section class="content-section" id="stats-section">
+                </section>
+
+            <section class="content-section" id="reports-section">
+                <div class="card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                        <h3 style="margin:0">Tất cả báo cáo</h3>
+                    </div>
                     <div style="overflow:auto">
-                        <table class="reports-table">
+                        <table>
                             <thead>
                                 <tr>
-                                    <th>Mã</th><th>Thời gian</th><th>Miêu tả người báo cáo</th><th>Địa điểm</th><th>Trạng thái</th>
+                                    <th>Mã</th><th>Thời gian</th><th>Mô tả</th><th>Khu vực</th><th>Trạng thái</th><th>Hành động</th>
                                 </tr>
                             </thead>
                             <tbody id="allReportsTable">
-                                <!-- Dữ liệu sẽ được JS chèn vào -->
-                                <tr><td colspan="5">Đang tải báo cáo...</td></tr>
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
             </section>
 
-            <!-- Statistics Section -->
-            <section class="content-section hidden" id="stats-section">
-                <div class="card chart-card">
-                    <h3>Số vụ tai nạn theo ngày (7 ngày gần nhất)</h3>
-                    <canvas id="reportsByDayChart"></canvas>
-                </div>
-                
-                <div class="card chart-card mt-4">
-                    <h3>Tỷ lệ trạng thái báo cáo</h3>
-                    <canvas id="statusRatioChart"></canvas>
-                </div>
-            </section>
-
-            <!-- Other Sections (users, notif, map) -->
-            <section class="content-section hidden" id="map-section">
-                <div class="card">
-                    <h3 style="margin:0">Bản đồ Tai nạn</h3>
-                    <div id="full-map" class="map-box mt-4"></div>
-                </div>
-            </section>
-
-            <section class="content-section hidden" id="users-section">
+            <section class="content-section" id="users-section">
                 <div class="card">
                     <h3 style="margin:0">Quản lý người dùng</h3>
                     <p style="color:var(--muted); margin-top: 8px;">Nội dung quản lý người dùng sẽ được hiển thị tại đây.</p>
                 </div>
             </section>
-            
-            <section class="content-section hidden" id="notif-section">
+
+            <section class="content-section" id="notif-section">
                 <div class="card">
                     <h3 style="margin:0">Thông báo</h3>
                     <p style="color:var(--muted); margin-top: 8px;">Nội dung thông báo sẽ được hiển thị tại đây.</p>
@@ -174,8 +165,6 @@
         </main>
     </div>
 
-
-    <!-- Liên kết tới JavaScript -->
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>
