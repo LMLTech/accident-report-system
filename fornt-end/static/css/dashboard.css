@@ -1,0 +1,91 @@
+/* fornt-end/static/css/dashboard.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+:root{
+    --purple-500:#6d28d9;
+    --purple-400:#8b5cf6;
+    --bg:#f3f4f6;
+    --muted:#6b7280;
+    --card:#ffffff;
+    --danger:#ef4444;
+    --success:#10b981;
+    --warning:#f59e0b;
+}
+*{box-sizing:border-box}
+body{
+    margin:0; font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;
+    background:var(--bg); color:#111827;
+}
+
+/* Layout */
+.app{display:flex;min-height:100vh}
+aside.sidebar{
+    width:260px; background:linear-gradient(180deg,var(--purple-500),var(--purple-400));
+    color:white; display:flex; flex-direction:column;
+    box-shadow: 0 6px 18px rgba(99,102,241,0.08);
+    transition: width 0.3s ease-in-out;
+}
+.brand{padding:22px 20px; font-weight:700; font-size:20px}
+nav.menu{padding:10px 12px; display:flex;flex-direction:column; gap:6px}
+.menu button{background:transparent;border:0;color:inherit;padding:10px 12px;border-radius:8px;text-align:left;cursor:pointer;display:flex;gap:10px;align-items:center}
+.menu button:hover{background:rgba(255,255,255,0.08)}
+.menu .active{background:rgba(255,255,255,0.12)}
+.sidebar .bottom{margin-top:auto;padding:16px}
+.btn-alert{width:100%;padding:10px;border-radius:8px;border:0;background:#fff;color:var(--purple-600);font-weight:600;cursor:pointer}
+
+main.main{
+    flex:1; padding:24px 28px;
+    transition: margin-left 0.3s ease-in-out;
+}
+header.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+header .title{font-size:20px;font-weight:700}
+header .meta{display:flex;gap:12px;align-items:center;color:var(--muted)}
+
+/* Stats cards */
+.grid{display:grid;gap:14px}
+.stats.grid-4{grid-template-columns:repeat(4,1fr);margin-bottom:14px}
+.card{background:var(--card);padding:16px;border-radius:10px;box-shadow:0 6px 18px rgba(15,23,42,0.03)}
+.card h4{margin:0;color:var(--muted);font-weight:600;font-size:13px}
+.card .value{font-size:22px;font-weight:700;margin-top:8px}
+
+/* Layout columns */
+.columns{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+.chart-box{height:300px;display:flex;align-items:center;justify-content:center;border:2px dashed #e6e6e6;border-radius:8px;color:var(--muted)}
+.map-box{height:300px;border-radius:8px;overflow:hidden;z-index:1;}
+
+/* Table */
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px 12px;text-align:left;font-size:14px}
+thead th{color:var(--muted);font-weight:600;border-bottom:1px solid #eef2f7}
+tbody tr{border-bottom:1px solid #f1f5f9}
+.badge{display:inline-block;padding:6px 8px;border-radius:999px;font-size:12px}
+
+.content-section {
+    display: none;
+}
+
+.content-section.active {
+    display: block;
+}
+
+/* Responsive */
+@media(max-width:1024px){
+    .stats.grid-4{grid-template-columns:repeat(2,1fr)}
+    .columns{grid-template-columns:1fr; }
+    aside.sidebar{width: 70px; }
+    .sidebar .brand, .sidebar .bottom { display: none; }
+    .menu button span { display: none; }
+    .menu button { justify-content: center; }
+    main.main{padding: 24px 12px; margin-left: 70px; }
+}
+
+
+@media(max-width:768px){
+    .app { flex-direction: column; }
+    aside.sidebar { width: 100%; height: auto; flex-direction: row; box-shadow: none; position: fixed; bottom: 0; }
+    .sidebar .brand, .sidebar .bottom { display: none; }
+    .menu { flex-direction: row; padding: 0; justify-content: space-around; width: 100%; }
+    .menu button { flex-direction: column; gap: 4px; padding: 10px 0; }
+    main.main { padding: 12px; margin-bottom: 70px; }
+    .stats.grid-4{grid-template-columns:1fr}
+}

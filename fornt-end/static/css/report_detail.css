@@ -1,0 +1,145 @@
+/* fornt-end/static/css/report_detail.css */
+
+/* General Styles from Dashboard */
+@import url('dashboard.css');
+
+/* Page-specific styles for Report Detail */
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.report-header h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.subtitle {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.btn-back {
+    padding: 10px 16px;
+    border-radius: 8px;
+    background: #e5e7eb;
+    color: #1f2937;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-back:hover {
+    background: #d1d5db;
+}
+
+.report-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.report-details h3 {
+    margin: 0 0 12px 0;
+    font-size: 18px;
+}
+
+.report-details p {
+    margin: 0 0 8px 0;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.report-details p strong {
+    color: #111827;
+}
+
+.divider {
+    margin: 16px 0;
+    border: 0;
+    border-top: 1px solid #e5e7eb;
+}
+
+.report-image {
+    width: 100%;
+    height: 350px;
+    object-fit: cover;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.action-section {
+    margin-top: 24px;
+}
+
+.action-section h3 {
+    font-size: 18px;
+    margin-bottom: 12px;
+}
+
+.status-form {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.status-form select {
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    min-width: 150px;
+    font-size: 14px;
+}
+
+.btn-primary {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 0;
+    background: var(--purple-500);
+    color: #fff;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s ease;
+}
+
+.btn-primary:hover {
+    background: var(--purple-400);
+}
+
+.status-message {
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    display: none; /* Hidden by default */
+}
+
+.status-message.success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.status-message.error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .report-details {
+        grid-template-columns: 1fr;
+    }
+    .report-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+}

@@ -1,0 +1,9 @@
+flask
+python-dotenv
+flask_sqlalchemy
+flask_cors
+Pillow               # để xử lý ảnh (nếu resize/check type)
+geopy                # để xử lý tọa độ địa lý
+requests             # để gọi API nếu dùng Google Maps, Nominatim
+email-validator      # kiểm tra email nếu cần
+smtplib              # sẵn trong Python, không cần cài

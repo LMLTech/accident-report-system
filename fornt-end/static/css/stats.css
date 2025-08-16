@@ -1,0 +1,47 @@
+/* fornt-end/static/css/stats.css */
+
+.stats-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+.chart-card {
+    background-color: var(--card);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.chart-card h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+    font-size: 1.25rem;
+}
+
+#regionStatsTableContainer table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#regionStatsTableContainer th,
+#regionStatsTableContainer td {
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+#regionStatsTableContainer th {
+    background-color: #f4f4f4;
+    font-weight: bold;
+    color: #555;
+}
+
+#regionStatsTableContainer td:first-child {
+    font-weight: bold;
+}
+
+.mt-4 {
+    margin-top: 20px;
+}

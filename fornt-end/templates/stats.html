@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Thống kê - Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/stats.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app">
+        <aside class="sidebar">
+            <div class="brand">ADMIN QUẢN LÝ</div>
+            <nav class="menu" aria-label="Main">
+                <button data-section="dashboard">📊 Bảng điều khiển</button>
+                <button data-section="map">🗺️ Bản đồ tai nạn</button>
+                <button class="active" data-section="stats">📈 Thống kê</button>
+                <button data-section="reports">📋 Danh sách báo cáo</button>
+                <button data-section="users">👥 Quản lý người dùng</button>
+                <button data-section="notif">🔔 Thông báo</button>
+            </nav>
+            <div class="bottom">
+                <button class="btn-alert" id="btnEmergency">🚨</button>
+            </div>
+        </aside>
+
+        <main class="main">
+            <header class="topbar">
+                <div>
+                    <div class="title">Thống kê chi tiết</div>
+                    <div style="color:var(--muted);font-size:13px">Phân tích dữ liệu tai nạn</div>
+                </div>
+                <div class="meta">
+                    <div style="text-align:right">
+                        <div style="font-weight:700">Xin chào, Admin</div>
+                        <div style="font-size:12px;color:var(--muted)">Hôm nay: <span id="todayCount">0</span> vụ</div>
+                    </div>
+                    <div style="width:44px;height:44px;border-radius:999px;background:#e2e8f0;display:flex;align-items:center;justify-content:center">A</div>
+                </div>
+            </header>
+
+            <section class="content-section active" id="stats-section">
+                
+                <div class="card" style="margin-bottom: 20px;">
+                    <h3>📊 THỐNG KÊ TAI NẠN THEO KHU VỰC</h3>
+                    <div id="regionStatsTableContainer">
+                        <table class="reports-table">
+                            <thead>
+                                <tr>
+                                    <th>Khu vực</th>
+                                    <th>Số vụ tai nạn</th>
+                                </tr>
+                            </thead>
+                            <tbody id="regionStatsTableBody">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card chart-card">
+                    <h3>Số vụ tai nạn theo ngày trong tuần</h3>
+                    <div style="height: 350px;">
+                        <canvas id="reportsByDayChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card chart-card mt-4">
+                    <h3>Phân loại theo mức độ</h3>
+                    <div style="height: 350px;">
+                        <canvas id="severityRatioChart"></canvas>
+                    </div>
+                </div>
+            </section>
+            
+            <footer style="text-align:center;color:var(--muted);margin-top:18px">AN TOÀN GIAO THÔNG - HẠNH PHÚC CỦA MỌI NHÀ</footer>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/stats.js') }}"></script>
+</body>
+</html>
