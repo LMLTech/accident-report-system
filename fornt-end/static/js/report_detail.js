@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
     statusUpdateForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        // Show loading state
         updateStatusBtn.disabled = true;
         updateStatusBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang cập nhật...';
 
@@ -28,13 +27,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             if (response.ok) {
-                // Handle success message
                 statusMessage.textContent = 'Cập nhật trạng thái thành công!';
                 statusMessage.classList.remove('error');
                 statusMessage.classList.add('success');
                 statusMessage.style.display = 'block';
 
-                // Update the status badge on the page
                 reportStatusBadge.textContent = newStatus;
                 reportStatusBadge.className = 'badge';
                 if (newStatus === 'Đang xử lý') {
@@ -48,7 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     reportStatusBadge.style.color = '#6b7280';
                 }
             } else {
-                // Handle error message
                 statusMessage.textContent = 'Đã xảy ra lỗi khi cập nhật trạng thái.';
                 statusMessage.classList.remove('success');
                 statusMessage.classList.add('error');
@@ -61,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
             statusMessage.classList.add('error');
             statusMessage.style.display = 'block';
         } finally {
-            // Re-enable button and reset text
             updateStatusBtn.disabled = false;
             updateStatusBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Cập nhật';
         }
@@ -78,5 +73,34 @@ document.addEventListener('DOMContentLoaded', () => {
     statusMessage.addEventListener('click', () => {
         statusMessage.style.display = 'none';
     });
-    
+
+    // Handle sidebar button clicks for navigation
+    const sidebarButtons = document.querySelectorAll('.menu-link');
+    sidebarButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const section = button.getAttribute('data-section');
+            let url = '#';
+            switch (section) {
+                case 'dashboard':
+                    url = '{{ url_for("admin_dashboard") }}';
+                    break;
+                case 'map':
+                    url = '{{ url_for("admin_map") }}';
+                    break;
+                case 'stats':
+                    url = '{{ url_for("admin_stats") }}';
+                    break;
+                case 'reports':
+                    url = '{{ url_for("admin_reports") }}';
+                    break;
+                case 'users':
+                    url = '{{ url_for("admin_users") }}';
+                    break;
+                case 'notif':
+                    url = '{{ url_for("admin_notifications") }}';
+                    break;
+            }
+            window.location.href = url;
+        });
+    });
 });

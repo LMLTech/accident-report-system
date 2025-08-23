@@ -1,14 +1,11 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Chi tiết báo cáo #{{ report.id }}</title>
-    
-    <!-- Liên kết tới CSS -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi tiết báo cáo #{{ report.id }} - QuanLyTaiNan</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/report_detail.css') }}">
-    <!-- Font Awesome để dùng icon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
@@ -17,79 +14,90 @@
         <aside class="sidebar">
             <div class="brand">QuanLyTaiNan</div>
             <nav class="menu" aria-label="Main">
-                <a href="{{ url_for('admin_dashboard') }}" class="menu-link">📊 Bảng điều khiển</a>
-                <a href="{{ url_for('admin_dashboard') }}" class="menu-link">🗺️ Bản đồ tai nạn</a>
-                <a href="{{ url_for('admin_dashboard') }}" class="menu-link">📈 Thống kê</a>
-                <a href="{{ url_for('admin_dashboard') }}" class="menu-link">📋 Danh sách báo cáo</a>
-                <a href="{{ url_for('admin_dashboard') }}" class="menu-link">👥 Quản lý người dùng</a>
-                <a href="{{ url_for('admin_dashboard') }}" class="menu-link">🔔 Thông báo</a>
+                <button class="menu-link" data-section="dashboard">📊 Bảng điều khiển</button>
+                <button class="menu-link" data-section="map">🗺️ Bản đồ tai nạn</button>
+                <button class="menu-link" data-section="stats">📈 Thống kê</button>
+                <button class="menu-link" data-section="reports">📋 Danh sách báo cáo</button>
+                <button class="menu-link" data-section="users">👥 Quản lý người dùng</button>
+                <button class="menu-link" data-section="notif">🔔 Thông báo</button>
             </nav>
             <div class="bottom">
                 <button class="btn-alert" id="btnEmergency">🚨 Báo cáo khẩn</button>
             </div>
         </aside>
 
-        <!-- MAIN CONTENT -->
         <main class="main">
-            <header class="topbar">
-                <div class="report-header">
-                    <div>
-                        <h2>Chi tiết báo cáo #{{ report.id }}</h2>
-                        <div class="subtitle">Xem và quản lý thông tin chi tiết của vụ tai nạn</div>
-                    </div>
-                    <button id="backButton" class="btn-back">
-                        <i class="fas fa-arrow-left"></i> Quay lại
-                    </button>
+            <div class="report-header">
+                <div>
+                    <h2>Chi tiết báo cáo #{{ report.id }}</h2>
+                    <p class="subtitle">Xem và quản lý thông tin chi tiết của vụ tai nạn</p>
                 </div>
-            </header>
+                <button id="backButton" class="btn-back"><i class="fas fa-arrow-left"></i> Quay lại</button>
+            </div>
 
-            <section class="card" style="padding: 24px;">
-                <div class="report-details">
-                    <div class="report-info">
-                        <p><strong>Thời gian:</strong> {{ report.timestamp.strftime('%H:%M:%S %d-%m-%Y') }}</p>
-                        <p><strong>Loại:</strong> Tai nạn giao thông</p>
-                        <p><strong>Khu vực:</strong> {{ report.location }}</p>
-                        <p><strong>Trạng thái:</strong> 
-                            <span id="reportStatusBadge" class="badge">
-                                {{ report.status }}
-                            </span>
-                        </p>
-                        <hr class="divider">
-                        <h3>Thông tin người báo cáo</h3>
-                        <p><strong>Họ và tên:</strong> {{ report.name }}</p>
-                        <p><strong>CCCD:</strong> {{ report.cccd }}</p>
-                        <p><strong>Số điện thoại:</strong> {{ report.phone }}</p>
-                    </div>
-                    <div class="report-media">
-                        <h3>Mô tả chi tiết</h3>
-                        <p>{{ report.description }}</p>
-                        <hr class="divider">
-                        <h3>Hình ảnh minh họa</h3>
+            <div class="report-details">
+                <div class="info-section">
+                    <h3>Thông tin cơ bản</h3>
+                    <p><strong>Thời gian:</strong> {{ vietnam_timestamp.strftime('%H:%M:%S %d-%m-%Y') if vietnam_timestamp else 'Không có thời gian' }}</p>
+                    <p><strong>Loại:</strong> Tai nạn giao thông</p>
+                    <p><strong>Khu vực:</strong> 
+                        {% if lat is not none and lng is not none %}
+                            <div>
+                                <div style="font-weight:500;margin-bottom:2px;">{{ location_display }}</div>
+                                <a href="https://maps.google.com/maps?q={{ lat }},{{ lng }}" target="_blank" 
+                                   style="color:#6d28d9;text-decoration:underline;cursor:pointer;font-size:12px;"
+                                   title="Xem vị trí trên Google Maps">
+                                   📍 {{ lat }}, {{ lng }}
+                                </a>
+                            </div>
+                        {% else %}
+                            {{ location_display }}
+                        {% endif %}
+                    </p>
+                    <p><strong>Trạng thái:</strong> 
+                        <span id="reportStatusBadge" class="badge">{{ report.status }}</span>
+                    </p>
+                    <div class="divider"></div>
+                    <h3>Thông tin người báo cáo</h3>
+                    <p><strong>Họ và tên:</strong> {{ report.name }}</p>
+                    <p><strong>CCCD:</strong> {{ report.cccd }}</p>
+                    <p><strong>Số điện thoại:</strong> {{ report.phone }}</p>
+                </div>
+
+                <div class="description-section">
+                    <h3>Mô tả chi tiết</h3>
+                    <p>{{ report.description }}</p>
+                    <div class="divider"></div>
+                    <h3>Hình ảnh minh họa</h3>
+                    {% if report.image_filename %}
                         <img src="{{ url_for('uploaded_file', filename=report.image_filename) }}" alt="Hình ảnh tai nạn" class="report-image">
-                    </div>
+                        <p style="font-size: 12px; color: #666;">Đường dẫn: {{ url_for('uploaded_file', filename=report.image_filename) }}</p>
+                    {% else %}
+                        <p>Không có hình ảnh.</p>
+                    {% endif %}
                 </div>
+            </div>
 
-                <div class="action-section">
-                    <h3>Cập nhật trạng thái</h3>
-                    <form id="statusUpdateForm" class="status-form">
-                        <input type="hidden" name="report_id" value="{{ report.id }}">
-                        <select name="status" id="status-select">
+            <div class="action-section">
+                <h3>Cập nhật trạng thái</h3>
+                <form id="statusUpdateForm" method="POST">
+                    <input type="hidden" name="report_id" value="{{ report.id }}">
+                    <div class="status-form">
+                        <select id="status-select" name="status">
                             <option value="Đang xử lý" {% if report.status == 'Đang xử lý' %}selected{% endif %}>Đang xử lý</option>
                             <option value="Đã xử lý" {% if report.status == 'Đã xử lý' %}selected{% endif %}>Đã xử lý</option>
                             <option value="Chờ" {% if report.status == 'Chờ' %}selected{% endif %}>Chờ</option>
                         </select>
-                        <button type="submit" id="updateStatusBtn" class="btn-primary">
-                            <i class="fas fa-sync-alt"></i> Cập nhật
-                        </button>
-                    </form>
-                    <div id="statusMessage" class="status-message"></div>
-                </div>
-            </section>
-
-            <footer class="footer">AN TOÀN GIAO THÔNG - HẠNH PHÚC CỦA MỌI NHÀ</footer>
+                        <button type="submit" id="updateStatusBtn" class="btn-primary"><i class="fas fa-sync-alt"></i> Cập nhật</button>
+                    </div>
+                </form>
+                <div id="statusMessage" class="status-message"></div>
+            </div>
         </main>
     </div>
-    <!-- Liên kết tới JavaScript -->
+
+    <footer>AN TOÀN GIAO THÔNG - HẠNH PHÚC CỦA MỌI NHÀ</footer>
+
     <script src="{{ url_for('static', filename='js/report_detail.js') }}"></script>
 </body>
 </html>

@@ -21,13 +21,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Xử lý logic đặc biệt cho từng section
         if (targetSectionId === 'map-section') {
             fetchAndInitMap('full-map');
         } else if (targetSectionId === 'reports-section') {
             fetchAndRenderReports();
         } else if (targetSectionId === 'stats-section') {
             fetchAndRenderStats();
+        } else if (targetSectionId === 'dashboard-section') {
+            fetchAndRenderDashboardStats();
         }
     }
 
@@ -38,7 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
             button.classList.add('active');
             const targetSection = button.getAttribute('data-section');
             
-            // Xử lý các section khác nhau
             if (targetSection === 'dashboard') {
                 switchSection('dashboard-section');
             } else if (targetSection === 'reports') {
@@ -55,7 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Thêm sự kiện cho nút "Xem tất cả"
     const viewAllReportsBtn = document.getElementById('view-all-reports');
     if (viewAllReportsBtn) {
         viewAllReportsBtn.addEventListener('click', (e) => {
@@ -78,20 +77,58 @@ document.addEventListener('DOMContentLoaded', () => {
         return `<span class="badge ${badgeClass}">${status}</span>`;
     }
 
-    // Hàm lấy và hiển thị dữ liệu báo cáo
+    // Hàm lấy và hiển thị dữ liệu báo cáo - CÓ DEBUG
     async function fetchAndRenderReports() {
         try {
             const response = await fetch('/api/admin/reports');
             const reports = await response.json();
             
+            // DEBUG: Xem dữ liệu trả về
+            console.log('Reports data:', reports);
+            
             allReportsTableBody.innerHTML = '';
             reports.forEach(r => {
+                // DEBUG: Xem từng report
+                console.log('Report:', r);
+                console.log('Lat:', r.lat, 'Lng:', r.lng);
+                console.log('Has coordinates:', !!(r.lat && r.lng));
+                
+                let areaHtml;
+                if (r.lat !== null && r.lng !== null) {
+                    areaHtml = `
+                        <div>
+                          <div style="font-weight:500;margin-bottom:2px;">${r.location || 'Không rõ vị trí'}</div>
+                          <a href="https://maps.google.com/maps?q=${r.lat},${r.lng}" target="_blank" 
+                             style="color:var(--purple-500);text-decoration:underline;cursor:pointer;font-size:12px;"
+                             title="Xem vị trí trên Google Maps">
+                             📍 ${r.lat}, ${r.lng}
+                          </a>
+                        </div>`;
+                } else if (r.location && r.location.includes(',')) {
+                    const [lat, lng] = r.location.split(',').map(s => s.trim());
+                    if (!isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
+                        areaHtml = `
+                            <div>
+                              <div style="font-weight:500;margin-bottom:2px;">vị trí tai nạn</div>
+                              <a href="https://maps.google.com/maps?q=${lat},${lng}" target="_blank" 
+                                 style="color:var(--purple-500);text-decoration:underline;cursor:pointer;font-size:12px;"
+                                 title="Xem vị trí trên Google Maps">
+                                 📍 ${lat}, ${lng}
+                              </a>
+                            </div>`;
+                    } else {
+                        areaHtml = `<span>${r.location || 'Không có tọa độ'}</span>`;
+                    }
+                } else {
+                    areaHtml = `<span>${r.location || 'Không có tọa độ'}</span>`;
+                }
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${r.id}</td>
                     <td>${r.timestamp}</td>
                     <td>${r.description}</td>
-                    <td>${r.location}</td>
+                    <td>${areaHtml}</td>
                     <td>
                         <select class="status-select" data-report-id="${r.id}">
                             <option value="Đang xử lý" ${r.status === 'Đang xử lý' ? 'selected' : ''}>Đang xử lý</option>
@@ -100,9 +137,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         </select>
                     </td>
                     <td>
-                        <a href="/admin/report/${r.id}" class="viewBtn" style="background:transparent;border:0;color:var(--purple-500);cursor:pointer">
+                        <button class="viewBtn js-view-report-btn" data-report-id="${r.id}" style="background:transparent;border:0;color:var(--purple-500);cursor:pointer">
                             Chi tiết
-                        </a>
+                        </button>
                     </td>
                 `;
                 allReportsTableBody.appendChild(tr);
@@ -114,9 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Hàm xử lý cập nhật trạng thái báo cáo
     function handleUpdateStatus(reportId, newStatus) {
-        const data = {
-            status: newStatus
-        };
+        const data = { status: newStatus };
 
         fetch(`/admin/report/${reportId}/update`, {
             method: 'POST',
@@ -133,8 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .then(result => {
             alert('Cập nhật trạng thái thành công!');
-            fetchAndRenderReports(); // Tải lại bảng sau khi cập nhật
-            fetchAndRenderDashboardStats(); // Tải lại dashboard để cập nhật số liệu
+            fetchAndRenderReports();
+            fetchAndRenderDashboardStats();
         })
         .catch(error => {
             console.error('Lỗi:', error);
@@ -142,11 +177,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Hàm lấy và hiển thị dữ liệu tổng quan
+    // Hàm lấy và hiển thị dữ liệu tổng quan - CÓ DEBUG
     async function fetchAndRenderDashboardStats() {
         try {
             const response = await fetch('/api/admin/dashboard-stats');
             const data = await response.json();
+            
+            // DEBUG: Xem dữ liệu dashboard
+            console.log('Dashboard data:', data);
+            console.log('Recent reports:', data.recentReports);
             
             document.getElementById('statTotal').textContent = data.totalToday;
             document.getElementById('statProcessing').textContent = data.processing;
@@ -160,12 +199,46 @@ document.addEventListener('DOMContentLoaded', () => {
             if (reportsTableBody) {
                 reportsTableBody.innerHTML = '';
                 recentReports.forEach(r => {
+                    // DEBUG: Xem từng recent report
+                    console.log('Recent report:', r);
+                    console.log('Recent Lat:', r.lat, 'Lng:', r.lng);
+                    
+                    let areaHtml;
+                    if (r.lat !== null && r.lng !== null) {
+                        areaHtml = `
+                            <div>
+                              <div style="font-weight:500;margin-bottom:2px;">${r.location || 'Không rõ vị trí'}</div>
+                              <a href="https://maps.google.com/maps?q=${r.lat},${r.lng}" target="_blank" 
+                                 style="color:var(--purple-500);text-decoration:underline;cursor:pointer;font-size:12px;"
+                                 title="Xem vị trí trên Google Maps">
+                                 📍 ${r.lat}, ${r.lng}
+                              </a>
+                            </div>`;
+                    } else if (r.location && r.location.includes(',')) {
+                        const [lat, lng] = r.location.split(',').map(s => s.trim());
+                        if (!isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
+                            areaHtml = `
+                                <div>
+                                  <div style="font-weight:500;margin-bottom:2px;">vị trí tai nạn</div>
+                                  <a href="https://maps.google.com/maps?q=${lat},${lng}" target="_blank" 
+                                     style="color:var(--purple-500);text-decoration:underline;cursor:pointer;font-size:12px;"
+                                     title="Xem vị trí trên Google Maps">
+                                     📍 ${lat}, ${lng}
+                                  </a>
+                                </div>`;
+                        } else {
+                            areaHtml = `<span>${r.location || 'Không có tọa độ'}</span>`;
+                        }
+                    } else {
+                        areaHtml = `<span>${r.location || 'Không có tọa độ'}</span>`;
+                    }
+
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${r.id}</td>
                         <td>${r.timestamp}</td>
                         <td>${r.description}</td>
-                        <td>${r.location}</td>
+                        <td>${areaHtml}</td>
                         <td>
                             <select class="status-select" data-report-id="${r.id}">
                                 <option value="Đang xử lý" ${r.status === 'Đang xử lý' ? 'selected' : ''}>Đang xử lý</option>
@@ -174,9 +247,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             </select>
                         </td>
                         <td>
-                            <a href="/admin/report/${r.id}" class="viewBtn" style="background:transparent;border:0;color:var(--purple-500);cursor:pointer">
+                            <button class="viewBtn js-view-report-btn" data-report-id="${r.id}" style="background:transparent;border:0;color:var(--purple-500);cursor:pointer">
                                 Chi tiết
-                            </a>
+                            </button>
                         </td>
                     `;
                     reportsTableBody.appendChild(tr);
@@ -195,7 +268,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Lấy và hiển thị dữ liệu thống kê
     async function fetchAndRenderStats() {
         try {
             const response = await fetch('/api/admin/stats');
@@ -206,8 +278,17 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Lỗi khi lấy dữ liệu thống kê:', error);
         }
     }
+    
+    async function fetchAndInitMap(mapId) {
+        try {
+            const response = await fetch('/api/admin/map-reports');
+            const reports = await response.json();
+            initMap(mapId, reports);
+        } catch (error) {
+            console.error('Lỗi khi lấy dữ liệu bản đồ:', error);
+        }
+    }
 
-    // Khởi tạo biểu đồ Line (hoạt động theo giờ)
     function initLineChart(data) {
         if (lineChartInstance) {
             lineChartInstance.destroy();
@@ -220,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
             data: {
                 labels: data.labels,
                 datasets: [{
-                    label:'Số vụ',
+                    label:'Sự vụ',
                     tension:0.3,
                     borderColor:'#06b6d4',
                     backgroundColor:'rgba(6,182,212,0.18)',
@@ -237,7 +318,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Khởi tạo biểu đồ Pie
     function initPieChart(data) {
         if (pieChartInstance) {
             pieChartInstance.destroy();
@@ -262,7 +342,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Khởi tạo bản đồ (Leaflet)
     function initMap(mapId, reports = []) {
         if (mapInstance) {
             mapInstance.remove();
@@ -274,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        mapInstance = L.map(mapId).setView([10.78, 106.70], 12); // Vị trí trung tâm TP.HCM
+        mapInstance = L.map(mapId).setView([10.78, 106.70], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'
@@ -283,11 +362,12 @@ document.addEventListener('DOMContentLoaded', () => {
         markers.forEach(marker => mapInstance.removeLayer(marker));
         markers = [];
         
-        // Thêm marker từ reports
         reports.forEach(r => {
-            const marker = L.marker([r.lat, r.lng]).addTo(mapInstance)
-                .bindPopup(`<strong>Báo cáo ${r.id}</strong><br>${r.location}<br><em>${r.status}</em>`);
-            markers.push(marker);
+            if (r.lat && r.lng) { 
+                const marker = L.marker([r.lat, r.lng]).addTo(mapInstance)
+                    .bindPopup(`<strong>Báo cáo ${r.id}</strong><br>${r.location}<br><em>${r.status}</em>`);
+                markers.push(marker);
+            }
         });
     }
 
@@ -301,15 +381,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (confirm(`Bạn có chắc chắn muốn cập nhật trạng thái của báo cáo #${reportId} thành "${newStatus}"?`)) {
                 handleUpdateStatus(reportId, newStatus);
             } else {
-                // Nếu người dùng hủy, reset dropdown về trạng thái ban đầu
-                // Bằng cách tải lại bảng để đảm bảo đồng bộ
                 fetchAndRenderReports(); 
                 fetchAndRenderDashboardStats();
             }
         }
     });
 
+    // Lắng nghe sự kiện click trên các nút "Chi tiết" mới
+    document.addEventListener('click', (event) => {
+        if (event.target.classList.contains('js-view-report-btn')) {
+            const reportId = event.target.getAttribute('data-report-id');
+            console.log(`Đã bấm vào Chi tiết cho báo cáo ID: ${reportId}`);
+            window.location.href = `/admin/report/${reportId}`;
+        }
+    });
+
     // Khởi động
     fetchAndRenderDashboardStats();
-    
 });

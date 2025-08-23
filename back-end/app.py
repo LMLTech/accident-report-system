@@ -4,7 +4,7 @@ from werkzeug.utils import secure_filename
 from flask_cors import CORS
 import os
 import functools 
-from utils.email_sender import send_emergency_email # Đã bỏ comment
+from utils.email_sender import send_emergency_email 
 from database.models import db, AccidentReport, User 
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -49,6 +49,16 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# Hàm trợ giúp để xử lý dữ liệu tọa độ
+def get_valid_coordinate(coord_str):
+    """Kiểm tra và chuyển đổi chuỗi tọa độ thành float hoặc None."""
+    if coord_str is not None and isinstance(coord_str, str) and coord_str.lower() != 'null' and coord_str.strip() != '':
+        try:
+            return float(coord_str)
+        except (ValueError, TypeError):
+            return None
+    return None
+
 # ==== ROUTES CỦA NGƯỜI DÙNG ====
 
 @app.route('/')
@@ -63,13 +73,18 @@ def report_form():
 def submit_report():
     try:
         name = request.form['name']
-        cccd = request.form['cccd']
-        phone = request.form['phone']
+        # Nếu từ AI (bắt đầu bằng AI_Detection), cho phép cccd và phone trống
+        cccd = request.form.get('cccd', '') if name.startswith('AI_Detection') else request.form['cccd']
+        phone = request.form.get('phone', '') if name.startswith('AI_Detection') else request.form['phone']
         location = request.form['location']
         description = request.form['description']
         
         # Mức độ tai nạn được gửi từ form
         severity = request.form.get('severity', 'Va chạm') 
+        
+        # Lấy tọa độ từ request, nếu không có thì gán None
+        lat = request.form.get('lat')
+        lng = request.form.get('lng')
 
         image = request.files.get('image')
         image_filename = None
@@ -82,6 +97,10 @@ def submit_report():
                 os.makedirs(app.config['UPLOAD_FOLDER'])
             image.save(image_path)
 
+        # Nếu từ AI, thêm ghi chú
+        if name.startswith('AI_Detection'):
+            description += ' (Từ camera AI)'
+
         report = AccidentReport(
             name=name,
             cccd=cccd,
@@ -89,7 +108,9 @@ def submit_report():
             location=location,
             description=description,
             image_filename=image_filename,
-            severity=severity
+            severity=severity,
+            lat=lat, # Thêm lat
+            lng=lng  # Thêm lng
         )
         db.session.add(report)
         db.session.commit()
@@ -136,12 +157,50 @@ def admin_login():
 def admin_dashboard():
     return render_template('dashboard.html')
 
-# Trang chi tiết báo cáo
+@app.route('/admin/stats')
+@login_required
+def stats_page():
+    return render_template('stats.html')
+
+@app.route('/admin/reports')
+@login_required
+def reports_page():
+    return render_template('reports_form.html')
+
+# Trong app.py, thêm hoặc sửa route này
 @app.route('/admin/report/<int:report_id>')
 @login_required
-def view_report(report_id):
+def report_detail(report_id):
     report = AccidentReport.query.get_or_404(report_id)
-    return render_template('report_detail.html', report=report)
+    
+    # Chuyển đổi thời gian sang múi giờ Việt Nam
+    vietnam_timestamp = convert_to_vietnam_time(report.timestamp) if report.timestamp else None
+    
+    # Parse tọa độ từ location nếu có định dạng "lat, lng"
+    lat = None
+    lng = None
+    location_display = report.location or 'Không có tọa độ'
+    if report.location and ',' in report.location:
+        try:
+            coords = report.location.split(',')
+            lat = float(coords[0].strip())
+            lng = float(coords[1].strip())
+            location_display = 'Vị trí từ tọa độ'  # Text tùy chỉnh khi parse thành công
+        except (ValueError, IndexError):
+            pass  # Nếu parse lỗi, giữ nguyên location
+    
+    # Nếu lat/lng có trong DB (nếu đã lưu), ưu tiên dùng chúng
+    if report.lat and report.lng:
+        lat = report.lat
+        lng = report.lng
+        location_display = report.location or 'Không rõ vị trí'
+    
+    return render_template('report_detail.html', 
+                           report=report, 
+                           vietnam_timestamp=vietnam_timestamp,  # Thời gian đã convert
+                           lat=lat, 
+                           lng=lng, 
+                           location_display=location_display)  # Chuỗi hiển thị
 
 @app.route('/admin/report/<int:report_id>/update', methods=['POST'])
 @login_required
@@ -203,7 +262,9 @@ def dashboard_stats_api():
             'timestamp': convert_to_vietnam_time(r.timestamp).strftime('%H:%M %d-%m-%Y'), # Chuyển đổi ở đây
             'location': r.location,
             'description': r.description,
-            'status': r.status
+            'status': r.status,
+            'lat': get_valid_coordinate(r.lat),
+            'lng': get_valid_coordinate(r.lng)
         } for r in recent_reports
     ]
 
@@ -236,11 +297,28 @@ def get_all_reports_api():
     reports_data = [
         {
             'id': r.id,
-            'timestamp': convert_to_vietnam_time(r.timestamp).strftime('%H:%M %d-%m-%Y'), # Chuyển đổi ở đây
+            'timestamp': convert_to_vietnam_time(r.timestamp).strftime('%H:%M %d-%m-%Y'),
             'location': r.location,
             'description': r.description,
-            'status': r.status
+            'status': r.status,
+            'lat': get_valid_coordinate(r.lat),
+            'lng': get_valid_coordinate(r.lng)
         } for r in reports
+    ]
+    return jsonify(reports_data)
+
+@app.route('/api/admin/map-reports')
+@login_required
+def get_map_reports_api():
+    reports = AccidentReport.query.all()
+    reports_data = [
+        {
+            'id': r.id,
+            'location': r.location,
+            'status': r.status,
+            'lat': get_valid_coordinate(r.lat),
+            'lng': get_valid_coordinate(r.lng)
+        } for r in reports if get_valid_coordinate(r.lat) is not None and get_valid_coordinate(r.lng) is not None
     ]
     return jsonify(reports_data)
 
@@ -305,8 +383,8 @@ if __name__ == '__main__':
             admin_user = User(username='admin', password=hashed_password)
             db.session.add(admin_user)
             db.session.commit()
-          
+            print("✅ Đã tạo người dùng 'admin' với mật khẩu 'admin123'")
         
-        print("Khởi động server...")
+        print("🚀 Khởi động server...")
     
     app.run(debug=True, port=8000)

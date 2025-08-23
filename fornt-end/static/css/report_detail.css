@@ -143,3 +143,25 @@
         gap: 12px;
     }
 }
+/* Trong dashboard.css */
+.menu-link {
+    background: transparent;
+    border: 0;
+    color: inherit;
+    padding: 10px 12px;
+    border-radius: 8px;
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+}
+
+.menu-link:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.menu-link.active {
+    background: rgba(255, 255, 255, 0.12);
+}
