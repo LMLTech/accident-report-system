@@ -69,7 +69,7 @@ def index():
 def report_form():
     return render_template('report_form.html')
 
-@app.route('/report', methods=['POST'])
+@app.route('/report', methods=['POST']) # AI
 def submit_report():
     try:
         name = request.form['name']
@@ -157,17 +157,13 @@ def admin_login():
 def admin_dashboard():
     return render_template('dashboard.html')
 
-@app.route('/admin/stats')
-@login_required
-def stats_page():
-    return render_template('stats.html')
-
+# Trang báo cáo
 @app.route('/admin/reports')
 @login_required
 def reports_page():
     return render_template('reports_form.html')
 
-# Trong app.py, thêm hoặc sửa route này
+# Chi tiết báo cáo
 @app.route('/admin/report/<int:report_id>')
 @login_required
 def report_detail(report_id):
